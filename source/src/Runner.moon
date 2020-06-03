@@ -1,16 +1,15 @@
-module "GameController", package.seeall
+module "Runner", package.seeall
 export load, update, draw
 
 require "src.Configurator"
 require "src.Logger"
 inspect = require("inspect")
 
-preload_finished = false
-status = ""
+status  = ""
 version = ""
+preload_finished = false
 
-
-preload = (debug=false) ->
+preload = (debug = false) ->
     Logger.log(nil, "preload", "Starting preload")
 
     if debug
@@ -22,15 +21,16 @@ preload = (debug=false) ->
     Logger.log(nil, "preload", "Finished")
 
 
-load = (debug=false) ->
+load = (debug = false) ->
     if not preload_finished
         preload(debug)
 
     if debug
         Logger.log(nil, "load", "Debug flag set on")
 
-    -- load non-assets
+    -- load/initialize non-assets
 
+    status = "Initial load finished!"
     Logger.log(nil, "load", "Finished")
 
 

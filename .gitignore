@@ -1,3 +1,4 @@
-/_out/
 *.sublime-workspace
+_out/
 __pycache__/
+_build/

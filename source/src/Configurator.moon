@@ -4,11 +4,10 @@ export load, reload, set_value, get_value, remove
 inspect = require("inspect")
 lume    = require("lume")
 
-CONFIG_TEMP_FILENAME = "cfg_000"
-
 -- a table that's used to configure the love engine.
 conf = {
     _lambda_engine: { -- a table that gets written directly into love's config
+        file_name: "lambda_config"
         engine_version: "0.0.1",
         build_title: "Untitled",
         build_version: "0.0.1",
@@ -79,7 +78,7 @@ conf = {
 
 -- Returns a table of the previously used engine configuration file
 read_config_as_table = () ->
-    file = io.open(CONFIG_TEMP_FILENAME)
+    file = io.open(conf._lambda_engine.file_name)
     if file == nil
         return Logger.log("error", "read_config_as_table", "Unable to open engine configuration file")
 
@@ -92,7 +91,7 @@ read_config_as_table = () ->
 
 -- Returns a write filehandler for the engine configuration file
 open_config_writer = () ->
-    file = io.open(CONFIG_TEMP_FILENAME, "w+")
+    file = io.open(conf._lambda_engine.file_name, "w+")
     if file == nil
         return Logger.log("error", "open_config_writer", "Unable to create engine configuration file")
 
@@ -170,7 +169,7 @@ get_value = (f) ->
     return val
 
 
-reload = (atomic_reload=false) ->
+reload = (atomic_reload = false) ->
     old_config = read_config_as_table()
     conf._lambda_engine.config_refresh_number += 1
 
@@ -188,7 +187,7 @@ write = (t) ->
 
 
 remove = () ->
-    ok, err = os.remove(CONFIG_TEMP_FILENAME)
+    ok, err = os.remove(conf._lambda_engine.file_name)
     if err != nil
         Logger.log("error", "remove", err)
 
@@ -237,7 +236,7 @@ load = (t) ->
     t.audio.mixwithsystem   = conf.backend.mobile_mix_with_audiosystem
 
     -- ========
-    -- FRONTEND ()
+    -- FRONTEND
     -- ========
         -- Non-configurable
     t.title                 = conf.client.title

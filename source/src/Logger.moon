@@ -3,8 +3,7 @@ export log
 
 lume = require("lume")
 
-
-log = (t="", id, msg) ->
+log = (t = "", id, msg) ->
 
     _msg = msg
 

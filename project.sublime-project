@@ -1,0 +1,52 @@
+{
+	"build_systems":
+	[
+		{
+			"name": "Build & Run",
+			"shell_cmd": "test.cmd"
+		},
+		{
+			"name": "Build",
+			"shell_cmd": "python build.py"
+		},
+		{
+			"name": "Build Dist",
+			"shell_cmd": "python build_win.py"
+		},
+		{
+			"name": "Clean",
+			"shell_cmd": "clean.cmd"
+		}
+	],
+	"folders":
+	[
+		{
+			"name": "Source",
+			"path": "source"
+		},
+		{
+			"name": "Libraries",
+			"path": "thirdparty"
+		},
+		{
+			"name": "Assets",
+			"path": "assets"
+		},
+		{
+			"name": "Build",
+			"path": "_build"
+		},
+		{
+			"folder_exclude_patterns":
+			[
+				"source",
+				"assets",
+				"thirdparty",
+				"__pycache__",
+                "_build",
+			],
+			"name": "Repository",
+			"path": "."
+		}
+	]
+}
