@@ -1,0 +1,56 @@
+{
+	"build_systems":
+	[
+		{
+			"name": "Build & Run",
+            "cmd": ["python", "$project_path/build.py", "run"],
+            "working_dir": "$project_path"
+		},
+		{
+			"name": "Build",
+            "cmd": ["python", "$project_path/build.py", "build"],
+            "working_dir": "$project_path"
+		},
+		{
+			"name": "Build Release",
+            "cmd": ["python", "$project_path/build.py", "release"],
+            "working_dir": "$project_path"
+		},
+		{
+			"name": "Clean",
+            "cmd": ["python", "$project_path/build.py", "clean"],
+            "working_dir": "$project_path"
+		}
+	],
+	"folders":
+	[
+		{
+			"name": "Source",
+			"path": "source"
+		},
+		{
+			"name": "Libraries",
+			"path": "thirdparty"
+		},
+		{
+			"name": "Assets",
+			"path": "assets"
+		},
+		{
+			"name": "Build",
+			"path": "_build"
+		},
+		{
+			"folder_exclude_patterns":
+			[
+				"source",
+				"assets",
+				"thirdparty",
+				"__pycache__",
+                "_build",
+			],
+			"name": "Repository",
+			"path": "."
+		}
+	]
+}

@@ -2,71 +2,30 @@
 
 ## Credit
 
-This repository is a modified version of [buckle2000's](https://github.com/buckle2000/love2d_moonscript_template) repository. This just has my preferred libraries already imported and a few bits of boilerplate code.
+This repository was originally just a modified version of [buckle2000's](https://github.com/buckle2000/love2d_moonscript_template) repository. However, it's now different, has its own goals, and uses a newer version of Python than the original.
 
 ## Requirements
 
-[LÖVE](http://love2d.org/) of **any** version
-
-[Moonscript](http://moonscript.org/)
-
-[Python](https://www.python.org/) 3.x, or you can make the build scripts 2.x compatible
+* [LÖVE](http://love2d.org/) >= 11.0
+* [MoonScript](http://moonscript.org/) == 0.5.0
+* [Python](https://www.python.org/) >= 3.8.3
 
 ## Features & Usage
 
-### One-click Build
-`build.py`
+To get started, simply edit `configuration.py` and set the locations of `love` and `moonc`. Note, if both of these are already in your PATH, you don't need to do this.
 
-You may (and likely) need to change variables named `EXE_*` in `build.py`.
+### Project Layout
 
-### One-click Testing
-Firstly, make sure `build.py` is functional.
+The script will mirror the `source/` directory placing the libraries within the `thirdparty/` directory alongside the compiled source files. This means you can access your libraries like this `local lib = require 'lib'` rather than like this `local lib = require 'thirdparty.lib'`.
 
-For Windows, run `test.cmd`.
-For other systems,
-```
-python build.py
-love _out/src
-```
+Assets, on the other hand, stay within their own `assets/` directory (even when building). This means they must be accessed like so: `love.graphics.newFont('assets/fonts/font.ttf', 12)`
 
-### One-click Distribution - Windows
-Before you do that, please see inside `build_win.py` and set the correct `EXE_LOVE_DIR`.
-Also, make sure you can test your game.
+### Compiling MoonScript to Lua
 
-Run `build_win.py`.
+Building a project is done by running the `build.py` script. If no arguments are passed, a standard build will start. If you'd like to be explicit with this, use the `build` flag. To run the build after compilation, use the `run` flag.
 
-### Source Compiling
+By default, the build script will delete any nonexistent assets in between build passes. If you'd like to clear every file within the build directory, use the `clean` flag.
 
-- [X] Mix `.moon` and `.lua` files
-- [x] Incremental Build (caution: do not build twice in 1 second)
-- [ ] Compile to bytecode
+### Distribution
 
-### Asset Pipeline
-i.e. auto-process in one click
-
-- [X] [Aseprite](http://www.aseprite.org/)
-- [X] [Tiled](http://www.mapeditor.org/)
-
-
-## Directory Structure
-Those directories don't need to exist.
-
-### `dynamic/`
-These files will be processed before written to the output.
-
-Files that are not end in any of the following extensions are ignored.
-- [X] `.lua`: lua script
-- [X] `.moon` -> `.lua`: moonscript script
-- [X] `.ase` or `.aseprite` -> `.png`: Aseprite document (image)
-- [X] `.tmx` -> `.lua`: Tiled document (map)
-
-Make sure you put your "raw" assets here!
-
-### `static/`
-These files will be copied as-is to the output.
-
-### `external/`
-Simliar to `dynamic/`, except that these files will not be fused in the game executable. i.e. placed beside the executable.
-When testing, same as `dynamic/`.
-
-Files inside `external/` will be processed but **not a single file is ignored**.
+To build your project into an executable, use the `release` flag.  If no arguments are passed, the script will create an executable for the current operating system.
