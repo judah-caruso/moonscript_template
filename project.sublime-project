@@ -3,19 +3,23 @@
 	[
 		{
 			"name": "Build & Run",
-			"shell_cmd": "test.cmd"
+            "cmd": ["python", "$project_path/build.py", "run"],
+            "working_dir": "$project_path"
 		},
 		{
 			"name": "Build",
-			"shell_cmd": "python build.py"
+            "cmd": ["python", "$project_path/build.py", "build"],
+            "working_dir": "$project_path"
 		},
 		{
-			"name": "Build Dist",
-			"shell_cmd": "python build_win.py"
+			"name": "Build Release",
+            "cmd": ["python", "$project_path/build.py", "release"],
+            "working_dir": "$project_path"
 		},
 		{
 			"name": "Clean",
-			"shell_cmd": "clean.cmd"
+            "cmd": ["python", "$project_path/build.py", "clean"],
+            "working_dir": "$project_path"
 		}
 	],
 	"folders":

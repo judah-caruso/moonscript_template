@@ -3,15 +3,17 @@ import sys
 import shutil
 import pickle
 
-from subprocess import PIPE, Popen
 from fnmatch import fnmatch
+from platform import system, architecture
+from subprocess import PIPE, Popen
+from urllib.request import urlretrieve
 
 import configuration as config # Edit 'configuration.py' to edit build settings
 
-# BUILD_DATA is a dictionary containing timestamps
-# for file modifications between builds.
-BUILD_DATA = dict()
-
+# Global variables for keeping track of the current build.
+BUILD_DATA   = dict()
+PLATFORM     = system()
+ARCHITECTURE = architecture()[0]
 
 def _change_extension(old_filename, extension):
     filename, _ = os.path.splitext(old_filename)
@@ -75,7 +77,104 @@ def _flatten_directory(source):
     ]
 
 
+# Checks if map has a case-insensitive match for value.
+# Will match against keys and their values.
+def _value_exists_in_map(map, value) -> (bool, str):
+    lower_value = value.lower()
+
+    for map_key, map_value in map.items():
+        assert isinstance(map_value, str), 'Expected string value!'
+        lower_map_key   = map_key.lower()
+        lower_map_value = map_value.lower()
+
+        if lower_value == lower_map_key or lower_value == lower_map_value:
+            return (True, map_value)
+
+    return (False, None)
+
+
+def _make_platform_download_url(platform, architecture='') -> str:
+    stem                  = f'https://github.com/love2d/love'
+    download_uri          = f'releases/download/{config.VER_LOVE}'
+    filetype              = 'zip'
+    platform_release_name = 'win32'
+
+    if platform == 'Windows':
+        platform_release_name = 'win32'
+        if architecture == 'x86_64':
+            platform_release_name = 'win64'
+    elif platform == 'Darwin':
+        platform_release_name = 'macos'
+    elif platform == 'Linux':
+        filetype              = 'tar.gz'
+        platform_release_name = 'linux-i686'
+        if architecture == 'x86_64':
+            platform_release_name = 'linux-x86_64'
+    else:
+        log(1, f'Unable to determine release for platform {platform}. Defaulting to {platform_release_name}')
+
+    platform_version = f'love-{config.VER_LOVE}-{platform_release_name}.{filetype}'
+    return f'{stem}/{download_uri}/{platform_version}'
+
+
+def _download_release_for_platform(platform, architecture) -> (bool, str):
+    log(0, f'Downloading Love2D {config.VER_LOVE} for {platform} ({architecture})')
+    url = _make_platform_download_url(platform, architecture)
+
+    try:
+        if not os.path.exists(config.LOC_TEMP):
+            os.mkdir(config.LOC_TEMP)
+
+        _, extension = os.path.splitext(url)
+        if platform == "Linux":
+            extension = '.tar.gz'
+
+        file_path = os.path.normpath(os.path.join(config.LOC_TEMP, f'love{extension}'))
+
+        if os.path.exists(file_path):
+            log(1, f'Love2D release already exists at {file_path}. Using that instead.')
+            return (True, file_path)
+
+        urlretrieve(url, file_path)
+        return (True, file_path)
+    except Exception as error:
+        log(2, f'Error while downloading Love2D release. Reason: {error}')
+
+    return (False, None)
+
+
+def _unpack_release(file_path) -> str:
+    try:
+        shutil.unpack_archive(file_path, config.LOC_TEMP)
+        extract_path = list(filter(lambda path: path not in file_path, os.listdir(config.LOC_TEMP)))
+
+        if len(extract_path) > 0:
+            return extract_path[0]
+
+        raise Exception('Unable to find extracted folder.')
+    except Exception as error:
+        raise error
+
+
+def _create_release_data(love_zip_path, platform, architecture):
+    release_data            = dict()
+    formatted_platform_name = f'{str(platform[:3]).lower()}_{architecture}'
+
+    # The folder that gets created in temp when we unpack love.(zip/tar.gz).
+    release_data['love_release_path']     = os.path.join(config.LOC_TEMP, _unpack_release(love_zip_path))
+    release_data['platform_release_path'] = os.path.join(config.LOC_REL, os.path.join(platform, architecture))
+    release_data['project_release_name']  = f'{config.VAL_NAME}_{config.VAL_REV.replace(".", "")}-{formatted_platform_name}'
+    release_data['project_release_path']  = os.path.join(release_data['platform_release_path'], release_data['project_release_name'])
+    release_data['build_archive_path']    = os.path.join(config.LOC_TEMP, config.VAL_NAME)
+    release_data['love_file_path']        = f'{release_data["build_archive_path"]}.love'
+
+    return release_data
+
+
 def run_external_tool(command) -> (bool, str):
+    if shutil.which(command[0]) == None:
+        return (False, f'Unable to find executable {command[0]}')
+
     process = Popen(command, stdout=PIPE, stderr=PIPE)
     _, output = process.communicate()
     exit_code = process.returncode
@@ -99,6 +198,18 @@ def apply_source_changes_to_destination(source, destination):
         if len(matches) <= 0:
             log(0, f'- {os.path.join(source, filename)}')
             os.remove(destination_file)
+
+
+def clean_build_directory():
+    global BUILD_DATA
+
+    log(0, 'Cleaning build directory.')
+    try:
+        if os.path.exists(config.LOC_BUILD):
+            shutil.rmtree(config.LOC_BUILD)
+        BUILD_DATA.clear()
+    except Exception as error:
+        log(2, f'Unable to clean build directory. Reason: {error}')
 
 
 def prepare_build_directory():
@@ -146,20 +257,83 @@ def default_build():
         log(0, f'Nothing to do :)')
 
 
-def clean_build_directory():
-    global BUILD_DATA
+def release_for_darwin() -> (bool, str):
+    log(2, f'Release process for {PLATFORM} ({ARCHITECTURE}) is not available yet, sorry!')
+    return (False, None)
 
-    log(0, 'Cleaning build directory.')
+
+def release_for_linux(architecture='x86') -> (bool, str):
+    log(2, f'Release process for {PLATFORM} ({ARCHITECTURE}) is not available yet, sorry!')
+    return (False, None)
+
+
+def release_for_windows(architecture='x86') -> (bool, str):
+    ok, file_path = _download_release_for_platform(PLATFORM, architecture)
+    if not ok:
+        log(2, f'Unable to get Love2D {config.VER_LOVE} release for {PLATFORM} ({architecture})')
+
+    log(0, f'Creating {PLATFORM} ({architecture}) release build.')
     try:
-        if os.path.exists(config.LOC_BUILD):
-            shutil.rmtree(config.LOC_BUILD)
-        BUILD_DATA.clear()
+        data = _create_release_data(file_path, PLATFORM, architecture)
+
+        # If a .love file already exists, delete it.
+        if os.path.exists(data['love_file_path']):
+            os.remove(data['love_file_path'])
+
+        # Create a .love file using the build directory.
+        shutil.make_archive(data['build_archive_path'], 'zip', config.LOC_BUILD)
+        os.rename(f'{data["build_archive_path"]}.zip', data['love_file_path'])
+
+        # Append the bytes of the .love file to love.exe
+        with open(os.path.join(data['love_release_path'], 'love.exe'), 'ab') as love_exe:
+            with open(data['love_file_path'], 'rb') as love_file:
+                love_exe.write(love_file.read())
+
+        # Create a new project release within 'LOC_REL.'
+        if not os.path.exists(data['platform_release_path']):
+            os.makedirs(data['platform_release_path'], exist_ok=True)
+
+        # Copy files from the love release directory to the project release directory.
+        def _copy_windows_tree(source, destination):
+            files_to_keep = ['.dll', 'love.exe', 'license.txt']
+            for file in files_to_keep:
+                if file in source:
+                    if file == 'love.exe':
+                        destination = destination.replace('love.exe', f'{config.VAL_NAME}.exe')
+
+                    shutil.copy2(source, destination)
+
+        shutil.copytree(data['love_release_path'], data['project_release_path'], dirs_exist_ok=True, copy_function=_copy_windows_tree)
+
+        # Create a project release zip file alongside the project release folder.
+        shutil.make_archive(os.path.join(data['platform_release_path'], data['project_release_name']), 'zip', data['project_release_path'])
+
+        # Cleanup temp directory
+        shutil.rmtree(config.LOC_TEMP)
+        return True, data['project_release_path']
     except Exception as error:
-        log(2, f'Unable to clean build directory. Reason: {error}')
+        log(2, f'Error while creating release. Reason: {error}')
+
+    return False, None
 
 
 def make_release():
-    log(0, 'Making release.')
+    log(0, 'Starting release process.')
+    success = False
+
+    if PLATFORM == 'Windows':
+        success, path = release_for_windows(ARCHITECTURE)
+    elif PLATFORM == 'Darwin':
+        success, path = release_for_darwin()
+    elif PLATFORM == 'Linux':
+        success, path = release_for_linux(ARCHITECTURE)
+    else:
+        log(2, f'Release unavailable for {PLATFORM} ({ARCHITECTURE}).')
+
+    if not success:
+        log(2, f'Unable to build release for {PLATFORM} ({ARCHITECTURE}).')
+
+    log(0, f'Successfully created new release build: {path}')
 
 
 def run_build():
@@ -170,24 +344,29 @@ def run_build():
 
 
 def usage(executable_name):
-    print(f'Usage: {executable_name} [help|build|release|run]')
+    print(f'Usage: {executable_name} [help|build|run|release [win|osx|linux] [32|64]]')
     exit(0)
 
-def log(type, status):
+
+def log(type, status, override_exit=False):
     type_name   = 'STATUS'
     should_exit = False
 
     if type == 1:
-        type_name   = 'WARNING'
+        type_name = 'WARNING'
     elif type >= 2:
         type_name   = 'ERROR'
         should_exit = True
 
     print(f'[{type_name}]: {status}')
+    if override_exit:
+        should_exit = not should_exit
+
     if should_exit: exit(1)
 
+
 def main(executable_name, argc, argv):
-    global BUILD_DATA
+    global BUILD_DATA, ARCHITECTURE, PLATFORM
 
     build_actions = {
         'Standard' : [default_build],
@@ -195,16 +374,56 @@ def main(executable_name, argc, argv):
         'Release'  : [clean_build_directory, default_build, make_release],
     }
 
+    platform_map = {
+        'win'   : 'Windows',
+        'osx'   : 'Darwin',
+        'linux' : 'Linux',
+        '32'    : 'x86',
+        '32bit' : 'x86',
+        '64'    : 'x86_64',
+        '64bit' : 'x86_64',
+    }
+
     if argc <= 0:
         build_process = build_actions['Standard']
     else:
-        if argv[0] in ('build', 'standard'):
+        flag = argv.pop(0)
+
+        if flag in ('build', 'standard'):
             build_process = build_actions['Standard']
-        elif argv[0] in ('release', 'distribute'):
+        elif flag in ('release', 'distribute'):
+            if len(argv) > 0:
+                # Verify and apply the target platform
+                platform_wanted   = argv.pop(0).lower()
+                ok, platform_name = _value_exists_in_map(platform_map, platform_wanted)
+                if not ok:
+                    log(2, f'Invalid platform selected {platform_wanted}', override_exit=True)
+                    usage(executable_name)
+
+                PLATFORM = platform_name
+
+                # Verify and apply target architecture to platform. Default to x86 if not specified.
+                if len(argv) > 0:
+                    architecture = argv.pop(0).lower()
+
+                    ok, architecture_name = _value_exists_in_map(platform_map, architecture)
+                    if not ok:
+                        log(2, f'Invalid architecture selected {architecture}', override_exit=True)
+                        usage(executable_name)
+
+                    ARCHITECTURE  = architecture_name
+                else:
+                    log(1, f'No architecture specified for {platform_name}. Defaulting to {ARCHITECTURE}.')
+
+            else:
+                _, PLATFORM     = _value_exists_in_map(platform_map, PLATFORM)
+                _, ARCHITECTURE = _value_exists_in_map(platform_map, ARCHITECTURE)
+                log(1, f'No release platform or architecture was selected. Defaulting to {PLATFORM} ({ARCHITECTURE}).')
+
             build_process = build_actions['Release']
-        elif argv[0] in ('run', 'start'):
+        elif flag in ('run', 'start'):
             build_process = build_actions['Run']
-        elif argv[0] in ('clean'):
+        elif flag in ('clean'):
             clean_build_directory()
             exit(0)
         else:
@@ -227,7 +446,7 @@ def main(executable_name, argc, argv):
 
 
 if __name__ == '__main__':
-    # Pass in argv without the executable name
-    arguments       = sys.argv
-    executable_name = arguments.pop(0)
+    # Pass argv in without the executable name
+    arguments       = sys.argv[1:]
+    executable_name = sys.argv[0]
     main(executable_name, len(arguments), arguments)

@@ -1,4 +1,5 @@
 *.sublime-workspace
-_out/
-__pycache__/
-_build/
+__pycache__/*
+_build/*
+_temp/*
+releases/*
